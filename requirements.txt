@@ -1,0 +1,7 @@
+flask>=2.3.0
+flask-sock>=0.7.0
+simple-websocket>=0.10.0
+mss>=9.0.0
+pyautogui>=0.9.54
+Pillow>=10.0.0
+numpy>=1.24.0
