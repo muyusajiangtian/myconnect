@@ -1,65 +1,158 @@
+import sys
+import time
+import platform
+import threading
 import pyautogui
-import subprocess
 
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0
 
+IS_WINDOWS = platform.system() == 'Windows'
+IS_MAC = platform.system() == 'Darwin'
 
-def _type_text_via_clipboard(text):
-    """通过剪贴板输入文字，支持中文和特殊字符"""
-    try:
-        process = subprocess.Popen(
-            ['clip.exe'],
-            stdin=subprocess.PIPE,
-            shell=True
-        )
-        process.communicate(input=text.encode('utf-16-le'))
-
-        import ctypes
-        ctypes.windll.user32.OpenClipboard(0)
-        # 用 Ctrl+V 粘贴
-        pyautogui.hotkey('ctrl', 'v', _pause=False)
-    except Exception:
-        # 回退：尝试逐字符输入（仅ASCII有效）
-        for ch in text:
-            if ord(ch) < 128:
-                pyautogui.press(ch, _pause=False)
+_clipboard_lock = threading.Lock()
 
 
-def _type_text(text):
-    """智能文字输入：ASCII用直接输入，含非ASCII用剪贴板"""
-    if all(ord(c) < 128 for c in text):
-        pyautogui.write(text, interval=0.01, _pause=False)
-    else:
-        _clipboard_paste(text)
-
-
-def _clipboard_paste(text):
-    """将文字放入剪贴板并粘贴"""
+def _get_clipboard_win():
     import ctypes
-    from ctypes import wintypes
-
+    import ctypes.wintypes
     user32 = ctypes.windll.user32
     kernel32 = ctypes.windll.kernel32
+    CF_UNICODETEXT = 13
 
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    user32.GetClipboardData.restype = ctypes.c_void_p
+
+    if not user32.OpenClipboard(0):
+        return None
+    try:
+        h_data = user32.GetClipboardData(CF_UNICODETEXT)
+        if not h_data:
+            return None
+        p_data = kernel32.GlobalLock(h_data)
+        if not p_data:
+            return None
+        try:
+            text = ctypes.wstring_at(p_data)
+            return text
+        finally:
+            kernel32.GlobalUnlock(h_data)
+    finally:
+        user32.CloseClipboard()
+
+
+def _set_clipboard_win(text):
+    import ctypes
+    user32 = ctypes.windll.user32
+    kernel32 = ctypes.windll.kernel32
     CF_UNICODETEXT = 13
     GMEM_MOVEABLE = 0x0002
+
+    kernel32.GlobalAlloc.restype = ctypes.c_void_p
+    kernel32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
 
     text_bytes = text.encode('utf-16-le') + b'\x00\x00'
     buf_size = len(text_bytes)
 
-    user32.OpenClipboard(0)
+    if not user32.OpenClipboard(0):
+        return False
     user32.EmptyClipboard()
 
     h_mem = kernel32.GlobalAlloc(GMEM_MOVEABLE, buf_size)
+    if not h_mem:
+        user32.CloseClipboard()
+        return False
     p_mem = kernel32.GlobalLock(h_mem)
     ctypes.memmove(p_mem, text_bytes, buf_size)
     kernel32.GlobalUnlock(h_mem)
 
     user32.SetClipboardData(CF_UNICODETEXT, h_mem)
     user32.CloseClipboard()
+    return True
 
-    pyautogui.hotkey('ctrl', 'v', _pause=False)
+
+def _clipboard_paste(text):
+    """保存当前剪贴板 -> 写入新文字 -> Ctrl+V粘贴 -> 恢复原剪贴板"""
+    with _clipboard_lock:
+        if IS_WINDOWS:
+            old_clip = _get_clipboard_win()
+            if not _set_clipboard_win(text):
+                return False
+            time.sleep(0.02)
+            pyautogui.hotkey('ctrl', 'v', _pause=False)
+            time.sleep(0.05)
+            if old_clip is not None:
+                _set_clipboard_win(old_clip)
+            return True
+
+        elif IS_MAC:
+            import subprocess
+            result = subprocess.run(['pbpaste'], capture_output=True, text=True)
+            old_clip = result.stdout
+
+            process = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+            process.communicate(input=text.encode('utf-8'))
+            time.sleep(0.02)
+            pyautogui.hotkey('command', 'v', _pause=False)
+            time.sleep(0.05)
+
+            if old_clip:
+                process = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+                process.communicate(input=old_clip.encode('utf-8'))
+            return True
+
+        else:
+            import subprocess
+            try:
+                result = subprocess.run(
+                    ['xclip', '-selection', 'clipboard', '-o'],
+                    capture_output=True, text=True
+                )
+                old_clip = result.stdout
+            except FileNotFoundError:
+                old_clip = None
+
+            try:
+                process = subprocess.Popen(
+                    ['xclip', '-selection', 'clipboard'],
+                    stdin=subprocess.PIPE
+                )
+                process.communicate(input=text.encode('utf-8'))
+            except FileNotFoundError:
+                try:
+                    process = subprocess.Popen(
+                        ['xsel', '--clipboard', '--input'],
+                        stdin=subprocess.PIPE
+                    )
+                    process.communicate(input=text.encode('utf-8'))
+                except FileNotFoundError:
+                    return False
+
+            time.sleep(0.02)
+            pyautogui.hotkey('ctrl', 'v', _pause=False)
+            time.sleep(0.05)
+
+            if old_clip:
+                try:
+                    process = subprocess.Popen(
+                        ['xclip', '-selection', 'clipboard'],
+                        stdin=subprocess.PIPE
+                    )
+                    process.communicate(input=old_clip.encode('utf-8'))
+                except FileNotFoundError:
+                    pass
+            return True
+
+
+def _type_text(text):
+    """所有文字统一使用剪贴板粘贴方案，确保中文可靠输入"""
+    _clipboard_paste(text)
 
 
 def handle_command(data: dict):
@@ -82,10 +175,35 @@ def handle_command(data: dict):
         delta = data.get("delta", 0)
         pyautogui.scroll(delta, _pause=False)
 
+    elif cmd_type == "hscroll":
+        delta = data.get("delta", 0)
+        if IS_WINDOWS:
+            import ctypes
+            MOUSEEVENTF_HWHEEL = 0x01000
+            ctypes.windll.user32.mouse_event(MOUSEEVENTF_HWHEEL, 0, 0, int(delta * 120), 0)
+        elif IS_MAC:
+            import subprocess
+            subprocess.run(
+                ['osascript', '-e', f'tell application "System Events" to scroll horizontal {delta}'],
+                capture_output=True
+            )
+        else:
+            pyautogui.hscroll(delta, _pause=False)
+
     elif cmd_type == "key":
         key = data.get("key", "")
         if key:
             pyautogui.press(key, _pause=False)
+
+    elif cmd_type == "keydown":
+        key = data.get("key", "")
+        if key:
+            pyautogui.keyDown(key, _pause=False)
+
+    elif cmd_type == "keyup":
+        key = data.get("key", "")
+        if key:
+            pyautogui.keyUp(key, _pause=False)
 
     elif cmd_type == "text":
         text = data.get("text", "")

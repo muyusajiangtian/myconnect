@@ -2,6 +2,7 @@ import threading
 import time
 import io
 import ctypes
+from collections import deque
 from PIL import Image, ImageDraw
 
 try:
@@ -30,12 +31,18 @@ class ScreenCapture:
         self.quality = quality
         self.scale = scale
         self.frame_interval = 1.0 / target_fps
-        self._lock = threading.Lock()
-        self._frame = None
         self._running = False
         self._thread = None
         self._actual_fps = 0.0
         self._camera = None
+
+        self._frame_lock = threading.Lock()
+        self._latest_frame = None
+
+        self._quality_min = 30
+        self._quality_max = 70
+        self._quality_current = quality
+        self._encode_times = deque(maxlen=10)
 
         if HAS_DXCAM:
             try:
@@ -49,6 +56,19 @@ class ScreenCapture:
     @property
     def fps(self):
         return self._actual_fps
+
+    def _adjust_quality(self, encode_ms):
+        self._encode_times.append(encode_ms)
+        if len(self._encode_times) < 5:
+            return
+
+        avg_ms = sum(self._encode_times) / len(self._encode_times)
+        target_ms = (self.frame_interval * 1000) * 0.4
+
+        if avg_ms > target_ms and self._quality_current > self._quality_min:
+            self._quality_current = max(self._quality_min, self._quality_current - 3)
+        elif avg_ms < target_ms * 0.6 and self._quality_current < self._quality_max:
+            self._quality_current = min(self._quality_max, self._quality_current + 1)
 
     def _capture_loop(self):
         frame_count = 0
@@ -85,12 +105,16 @@ class ScreenCapture:
                 r = 5
                 draw.ellipse([dx - r, dy - r, dx + r, dy + r], fill=(255, 60, 60), outline=(255, 255, 255))
 
+                encode_start = time.time()
                 buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=self.quality, optimize=False)
+                img.save(buf, format="JPEG", quality=self._quality_current, optimize=False)
                 jpeg_data = buf.getvalue()
+                encode_ms = (time.time() - encode_start) * 1000
 
-                with self._lock:
-                    self._frame = jpeg_data
+                self._adjust_quality(encode_ms)
+
+                with self._frame_lock:
+                    self._latest_frame = jpeg_data
 
                 frame_count += 1
                 elapsed = time.time() - fps_timer
@@ -124,5 +148,5 @@ class ScreenCapture:
             self._thread.join(timeout=2)
 
     def get_frame(self):
-        with self._lock:
-            return self._frame
+        with self._frame_lock:
+            return self._latest_frame

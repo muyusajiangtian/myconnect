@@ -3,7 +3,6 @@ import time
 import threading
 import socket
 import os
-import signal
 from flask import Flask, render_template
 from flask_sock import Sock
 
@@ -41,10 +40,10 @@ def ws_control(ws):
         clients.add(ws)
     status_window.update(len(clients), capture.fps)
 
-    try:
-        stream_thread = threading.Thread(target=_stream_frames, args=(ws,), daemon=True)
-        stream_thread.start()
+    send_thread = threading.Thread(target=_stream_frames, args=(ws,), daemon=True)
+    send_thread.start()
 
+    try:
         while server_running:
             msg = ws.receive(timeout=30)
             if msg is None:
@@ -67,19 +66,21 @@ def ws_control(ws):
 
 def _stream_frames(ws):
     interval = 1.0 / 30
-    last_frame = None
+    last_frame_id = None
     try:
         while server_running:
             with clients_lock:
                 if ws not in clients:
                     break
+
             frame = capture.get_frame()
-            if frame and frame is not last_frame:
+            if frame is not None and frame is not last_frame_id:
                 try:
                     ws.send(frame)
                 except Exception:
                     break
-                last_frame = frame
+                last_frame_id = frame
+
             status_window.update(len(clients), capture.fps)
             time.sleep(interval)
     except Exception:
