@@ -6,372 +6,325 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
-<title>电脑遥控</title>
+<meta name="screen-orientation" content="any">
+<title>MyConnect 远程控制</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-    height: 100%;
-    overflow: hidden;
-    background: #1a1a2e;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    height: 100%; overflow: hidden;
+    background: #0d1117; color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     touch-action: none;
     -webkit-overflow-scrolling: touch;
-    position: fixed;
-    width: 100%;
+    position: fixed; width: 100%;
 }
-
-/* Safe area support */
 body {
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* ========== 认证页面 ========== */
+#auth-page {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1c2128 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999; padding: 20px;
+}
+#auth-page.hidden { display: none; }
+.auth-logo { font-size: 48px; margin-bottom: 8px; }
+.auth-title { font-size: 22px; font-weight: 600; margin-bottom: 6px; color: #fff; }
+.auth-subtitle { font-size: 13px; color: #8b949e; margin-bottom: 30px; }
+.auth-input-group { width: 100%; max-width: 300px; }
+#auth-input {
+    width: 100%; height: 52px;
+    background: #21262d; border: 2px solid #30363d; border-radius: 12px;
+    color: #fff; font-size: 24px; text-align: center;
+    letter-spacing: 8px; outline: none; transition: border-color 0.2s;
+}
+#auth-input:focus { border-color: #58a6ff; }
+#auth-input.error { border-color: #f85149; animation: shake 0.3s; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.auth-mode-label { font-size: 12px; color: #8b949e; margin-top: 10px; text-align: center; }
+#auth-error { color: #f85149; font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
+.auth-btn {
+    margin-top: 20px; width: 100%; max-width: 300px; height: 46px;
+    background: #238636; border: none; border-radius: 10px;
+    color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
+}
+.auth-btn:active { background: #2ea043; }
+
+/* ========== 主应用 ========== */
 #app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
+    display: none; flex-direction: column;
+    height: 100%; width: 100%; overflow: hidden;
 }
+#app-container.visible { display: flex; }
 
-#screen-area {
-    width: 100%;
-    height: 40%;
-    min-height: 80px;
-    overflow: hidden;
-    position: relative;
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: height 0.3s ease;
-}
-#screen-area.gamepad-mode { height: 22%; }
-
-#screen-container {
-    position: absolute;
-    transform-origin: 0 0;
-    will-change: transform;
-}
-
-#screen-img {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-}
-
-#touchpad {
-    width: 100%;
-    flex: 1;
-    min-height: 80px;
-    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
-    position: relative;
-    touch-action: none;
-    transition: all 0.3s ease;
-}
-#touchpad.gamepad-mode {
-    flex: none;
-    height: 55px;
-    min-height: 55px;
-}
-
-#touchpad-hint {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: rgba(255,255,255,0.15);
-    font-size: 13px;
-    pointer-events: none;
-    text-align: center;
-    line-height: 2;
-}
-#touchpad.gamepad-mode #touchpad-hint { display: none; }
-
-#toolbar {
-    height: 44px;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    background: #0a0a1a;
-    border-top: 1px solid #333;
-    flex-shrink: 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    z-index: 10;
-}
-
-.tool-btn {
-    color: #ccc;
-    font-size: 12px;
-    padding: 6px 10px;
-    border: 1px solid #555;
-    border-radius: 6px;
-    background: #222;
-    cursor: pointer;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    white-space: nowrap;
-}
-.tool-btn:active { background: #555; color: #fff; }
-.tool-btn.danger { border-color: #833; color: #f66; }
-.tool-btn.danger:active { background: #600; }
-.tool-btn.active { background: #1a6; border-color: #1a6; color: #fff; }
-
+/* 状态栏 */
 #status-bar {
-    position: relative;
-    width: 100%;
-    height: 22px;
-    min-height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    width: 100%; height: 26px; min-height: 26px;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 0 10px;
-    background: rgba(0,0,0,0.85);
-    z-index: 999;
-    font-size: 11px;
-    flex-shrink: 0;
+    background: #161b22; border-bottom: 1px solid #21262d;
+    z-index: 100; flex-shrink: 0; font-size: 10px;
 }
-#status-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: #f00;
-    margin-right: 5px;
-    display: inline-block;
-}
-#status-dot.on { background: #0f0; }
-#status-text { color: #aaa; }
-#fps-text { color: #888; }
-#mode-indicator { color: #6cf; font-size: 10px; }
+#status-dot { width: 6px; height: 6px; border-radius: 50%; background: #f85149; margin-right: 4px; display: inline-block; }
+#status-dot.on { background: #3fb950; }
+.status-left, .status-right { display: flex; align-items: center; gap: 6px; }
+.stat-item { color: #8b949e; font-size: 10px; }
+.stat-item span { color: #58a6ff; }
 
-/* Gamepad area */
-#gamepad-area {
-    display: none;
-    width: 100%;
-    position: relative;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    touch-action: none;
-    overflow: hidden;
-    flex-shrink: 0;
+/* 画面区域 */
+#screen-area {
+    width: 100%; height: 38%; min-height: 80px;
+    overflow: hidden; position: relative; background: #010409;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: height 0.2s ease;
 }
-#gamepad-area.visible {
-    display: block;
-    height: calc(78% - 22px - 44px - 55px);
-    min-height: 160px;
+#screen-container { position: absolute; transform-origin: 0 0; will-change: transform; }
+#screen-img {
+    display: block; max-width: 100%; max-height: 100%; object-fit: contain;
+    image-rendering: auto;
 }
 
-.dpad-container {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 130px;
-    height: 130px;
+/* 触控板 */
+#touchpad {
+    width: 100%; flex: 1; min-height: 60px;
+    background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+    position: relative; touch-action: none;
+}
+#touchpad-hint {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(139,148,158,0.2); font-size: 11px;
+    pointer-events: none; text-align: center; line-height: 2;
 }
 
-.dpad-btn {
-    position: absolute;
-    width: 42px;
-    height: 42px;
-    background: rgba(255,255,255,0.12);
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 16px;
-    user-select: none;
+/* 工具栏 */
+#toolbar {
+    height: 46px; min-height: 46px;
+    display: flex; align-items: center; justify-content: space-around;
+    background: #161b22; border-top: 1px solid #21262d;
+    flex-shrink: 0; padding: 0 2px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 100;
+}
+.tool-btn {
+    color: #8b949e; font-size: 10px; padding: 4px 6px;
+    border: 1px solid #30363d; border-radius: 8px;
+    background: #21262d; cursor: pointer;
+    user-select: none; -webkit-tap-highlight-color: transparent;
+    white-space: nowrap; display: flex; flex-direction: column;
+    align-items: center; gap: 1px; min-width: 38px;
+    transition: all 0.15s;
+}
+.tool-btn:active { background: #30363d; color: #fff; transform: scale(0.93); }
+.tool-btn.active { background: #238636; border-color: #238636; color: #fff; }
+.tool-btn-icon { font-size: 15px; line-height: 1; }
+
+/* 虚拟快捷键区 */
+#quick-keys {
+    display: none; height: 36px; min-height: 36px;
+    background: #21262d; border-top: 1px solid #30363d;
+    flex-shrink: 0; padding: 4px 6px;
+    overflow-x: auto; white-space: nowrap;
+    align-items: center; gap: 5px;
+}
+#quick-keys.visible { display: flex; }
+.qk-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 26px; min-width: 34px; padding: 0 7px;
+    background: #30363d; border: 1px solid #484f58;
+    border-radius: 6px; color: #e6edf3; font-size: 11px;
+    cursor: pointer; user-select: none; flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
-    touch-action: none;
 }
-.dpad-btn.pressed { background: rgba(80,200,120,0.6); border-color: #4c4; transform: scale(0.92); }
-.dpad-up { left: 44px; top: 0; }
-.dpad-down { left: 44px; bottom: 0; }
-.dpad-left { left: 0; top: 44px; }
-.dpad-right { right: 0; top: 44px; }
+.qk-btn:active { background: #58a6ff; color: #000; }
+.qk-btn.mod { background: #1f2937; border-color: #58a6ff44; color: #58a6ff; }
+.qk-btn.mod.active { background: #58a6ff; color: #000; }
+.qk-btn.custom { background: #1c2128; border-color: #da3633aa; color: #ffa657; }
 
-.abxy-container {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 130px;
-    height: 130px;
-}
-
-.abxy-btn {
-    position: absolute;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.12);
-    border: 2px solid rgba(255,255,255,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 13px;
-    font-weight: bold;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: none;
-}
-.abxy-btn.pressed { background: rgba(80,120,220,0.6); border-color: #58f; transform: scale(0.92); }
-.btn-x { left: 44px; top: 0; }
-.btn-a { left: 44px; bottom: 0; }
-.btn-y { left: 0; top: 44px; }
-.btn-b { right: 0; top: 44px; }
-
-.shoulder-container {
-    position: absolute;
-    top: 6px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 15px;
-}
-
-.shoulder-btn {
-    width: 65px;
-    height: 32px;
-    background: rgba(255,255,255,0.12);
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 12px;
-    font-weight: bold;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: none;
-}
-.shoulder-btn.pressed { background: rgba(220,80,80,0.6); border-color: #f55; transform: scale(0.92); }
-
-/* Keyboard input area */
+/* 键盘输入区 */
 #kb-wrapper {
-    position: fixed;
-    bottom: 50px;
-    left: 10px;
-    right: 10px;
-    z-index: 900;
-    display: none;
+    position: fixed; bottom: 52px; left: 8px; right: 8px;
+    z-index: 900; display: none;
 }
 #kb-wrapper.visible { display: block; }
-
 #kb-textarea {
-    width: 100%;
-    height: 44px;
-    background: #222;
-    border: 1px solid #1a6;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 16px;
-    padding: 8px 12px;
-    outline: none;
-    resize: none;
-    -webkit-appearance: none;
+    width: 100%; height: 42px;
+    background: #21262d; border: 2px solid #238636; border-radius: 10px;
+    color: #fff; font-size: 16px; padding: 8px 12px;
+    outline: none; resize: none; -webkit-appearance: none;
 }
-
 #kb-close-btn {
-    position: absolute;
-    top: -28px;
-    right: 0;
-    background: #555;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 4px 10px;
-    font-size: 12px;
-    cursor: pointer;
+    position: absolute; top: -28px; right: 0;
+    background: #30363d; color: #e6edf3; border: none;
+    border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer;
 }
 
-/* Settings overlay */
-#settings-overlay {
-    display: none;
-    position: fixed;
+/* ========== 面板覆盖层 ========== */
+.panel-overlay {
+    display: none; position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.9);
-    z-index: 1000;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: calc(env(safe-area-inset-top, 0px) + 30px) 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+    background: rgba(1,4,9,0.96); z-index: 1000;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: calc(env(safe-area-inset-top, 0px) + 16px) 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
-#settings-overlay.visible { display: block; }
+.panel-overlay.visible { display: block; }
+.panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #21262d;
+}
+.panel-title { font-size: 17px; font-weight: 600; }
+.panel-close {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: #21262d; border: none; color: #8b949e;
+    font-size: 16px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+}
 
-.settings-title {
-    color: #fff;
-    font-size: 18px;
-    margin-bottom: 16px;
-    text-align: center;
-}
+/* 设置/文件/剪贴板通用 */
 .settings-group {
-    margin-bottom: 16px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-    padding: 12px;
+    margin-bottom: 14px; background: #161b22;
+    border: 1px solid #21262d; border-radius: 12px; padding: 12px;
 }
-.settings-group h3 {
-    color: #aaa;
-    font-size: 13px;
-    margin-bottom: 8px;
-}
+.settings-group h3 { color: #8b949e; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 .setting-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
 }
-.setting-row label {
-    color: #ccc;
-    font-size: 13px;
-    flex: 1;
+.setting-row:last-child { margin-bottom: 0; }
+.setting-row label { color: #c9d1d9; font-size: 13px; flex: 1; }
+.setting-row input[type="range"] { width: 110px; accent-color: #58a6ff; }
+.setting-row input[type="text"], .setting-row select {
+    width: 100px; padding: 5px 7px; background: #0d1117;
+    border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 12px;
 }
-.setting-row input, .setting-row select {
-    width: 120px;
-    padding: 6px 8px;
-    background: #333;
-    border: 1px solid #555;
-    border-radius: 6px;
-    color: #fff;
-    font-size: 14px;
+.setting-value { color: #58a6ff; font-size: 11px; min-width: 36px; text-align: right; }
+
+.file-path-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 10px; background: #161b22;
+    border: 1px solid #21262d; border-radius: 8px;
+    margin-bottom: 10px; font-size: 11px; color: #8b949e;
+    overflow-x: auto; white-space: nowrap;
 }
-.settings-close-btn {
-    display: block;
-    margin: 16px auto 0;
-    padding: 12px 40px;
-    background: #1a6;
-    border: none;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 15px;
-    cursor: pointer;
+.file-path-bar .path-btn { background: none; border: none; color: #58a6ff; font-size: 11px; cursor: pointer; }
+.file-list { list-style: none; }
+.file-item {
+    display: flex; align-items: center; padding: 9px 10px;
+    border-bottom: 1px solid #21262d; gap: 8px; cursor: pointer;
 }
-.speed-indicator {
-    color: #888;
-    font-size: 11px;
-    text-align: center;
-    margin-top: 2px;
+.file-item:active { background: #161b22; }
+.file-icon { font-size: 18px; flex-shrink: 0; width: 26px; text-align: center; }
+.file-info { flex: 1; min-width: 0; }
+.file-name { font-size: 13px; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { font-size: 10px; color: #8b949e; margin-top: 2px; }
+.file-download {
+    padding: 5px 10px; background: #238636; border: none;
+    border-radius: 6px; color: #fff; font-size: 11px; cursor: pointer; flex-shrink: 0;
+}
+
+.clipboard-content { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 10px; min-height: 80px; margin-bottom: 10px; }
+.clipboard-textarea { width: 100%; min-height: 70px; background: transparent; border: none; color: #e6edf3; font-size: 13px; resize: vertical; outline: none; font-family: inherit; }
+.clipboard-actions { display: flex; gap: 8px; }
+.clip-btn { flex: 1; padding: 9px; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.clip-btn.sync-to-pc { background: #238636; color: #fff; }
+.clip-btn.sync-from-pc { background: #1f6feb; color: #fff; }
+
+.monitor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
+.monitor-card { background: #0d1117; border: 2px solid #30363d; border-radius: 10px; padding: 10px; text-align: center; cursor: pointer; }
+.monitor-card.active { border-color: #58a6ff; background: #161b22; }
+.monitor-card .mon-icon { font-size: 24px; margin-bottom: 3px; }
+.monitor-card .mon-name { font-size: 11px; color: #c9d1d9; }
+.monitor-card .mon-res { font-size: 10px; color: #8b949e; }
+
+/* 自定义快捷键编辑 */
+.shortcut-list { list-style: none; }
+.shortcut-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 0;
+    border-bottom: 1px solid #21262d;
+}
+.shortcut-item input { flex: 1; }
+.shortcut-del { background: #da3633; border: none; color: #fff; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; }
+.shortcut-add { display: inline-block; margin-top: 8px; padding: 8px 16px; background: #238636; border: none; border-radius: 8px; color: #fff; font-size: 13px; cursor: pointer; }
+
+/* 横屏自适应布局 - 画面全屏+浮动控制（必须在所有基础样式之后） */
+@media (orientation: landscape) {
+    #app-container { position: relative; }
+    #screen-area {
+        position: absolute !important; top: 0; left: 0; right: 0; bottom: 0;
+        width: 100% !important; height: 100% !important; min-height: unset !important;
+        z-index: 1;
+    }
+    #status-bar {
+        position: fixed !important; top: 0; left: 0; right: 0;
+        z-index: 200; opacity: 0.85;
+    }
+    #right-panel {
+        position: fixed !important; right: 0; top: 26px; bottom: 0;
+        width: auto !important; height: auto !important;
+        display: flex; flex-direction: column;
+        z-index: 200; pointer-events: none;
+        align-items: flex-end;
+    }
+    #touchpad {
+        position: fixed !important; top: 26px; left: 0; right: 54px; bottom: 0;
+        z-index: 50; background: transparent !important;
+        pointer-events: auto;
+    }
+    #touchpad-hint { display: none; }
+    #toolbar {
+        position: fixed !important; right: 6px; top: 50%; transform: translateY(-50%);
+        z-index: 300 !important; pointer-events: auto;
+        flex-direction: column !important; width: 42px !important; height: auto !important;
+        min-height: unset !important; border-top: none !important;
+        border-radius: 12px; padding: 4px !important;
+        background: rgba(22,27,34,0.85) !important; border: 1px solid #30363d;
+        gap: 2px;
+    }
+    .tool-btn { font-size: 9px !important; padding: 4px 3px !important; min-width: unset !important; width: 36px; }
+    .tool-btn-icon { font-size: 13px !important; }
+    #quick-keys {
+        position: fixed !important; bottom: 6px; left: 50%; transform: translateX(-50%);
+        z-index: 300 !important; pointer-events: auto;
+        height: 32px !important; min-height: 32px !important;
+        border-radius: 10px; background: rgba(33,38,45,0.9) !important;
+        border: 1px solid #30363d; padding: 3px 8px !important;
+        max-width: 90vw;
+    }
+    .qk-btn { height: 24px !important; font-size: 10px !important; }
 }
 </style>
 </head>
 <body>
 
+<!-- 认证页面 -->
+<div id="auth-page">
+    <div class="auth-logo">&#128272;</div>
+    <div class="auth-title">MyConnect</div>
+    <div class="auth-subtitle">请输入连接密码以访问远程桌面</div>
+    <div class="auth-input-group">
+        <input type="text" id="auth-input" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="......">
+    </div>
+    <div class="auth-mode-label" id="auth-mode-label">动态验证码</div>
+    <div id="auth-error"></div>
+    <button class="auth-btn" id="auth-btn">连接</button>
+</div>
+
+<!-- 主应用 -->
 <div id="app-container">
 
 <div id="status-bar">
-    <span><span id="status-dot"></span><span id="status-text">未连接</span></span>
-    <span id="mode-indicator">触控板模式</span>
-    <span id="fps-text"></span>
+    <div class="status-left">
+        <span id="status-dot"></span>
+        <span id="status-text" style="color:#8b949e">连接中</span>
+    </div>
+    <div class="status-right">
+        <span class="stat-item">延迟<span id="stat-latency">--</span>ms</span>
+        <span class="stat-item"><span id="stat-bandwidth">--</span></span>
+        <span class="stat-item"><span id="stat-fps">--</span>FPS</span>
+    </div>
 </div>
 
 <div id="screen-area">
@@ -380,622 +333,576 @@ body {
     </div>
 </div>
 
-<div id="gamepad-area">
-    <div class="shoulder-container">
-        <div class="shoulder-btn" data-btn="L">L</div>
-        <div class="shoulder-btn" data-btn="R">R</div>
-    </div>
-    <div class="dpad-container">
-        <div class="dpad-btn dpad-up" data-btn="up">&#9650;</div>
-        <div class="dpad-btn dpad-down" data-btn="down">&#9660;</div>
-        <div class="dpad-btn dpad-left" data-btn="left">&#9664;</div>
-        <div class="dpad-btn dpad-right" data-btn="right">&#9654;</div>
-    </div>
-    <div class="abxy-container">
-        <div class="abxy-btn btn-x" data-btn="X">X</div>
-        <div class="abxy-btn btn-a" data-btn="A">A</div>
-        <div class="abxy-btn btn-y" data-btn="Y">Y</div>
-        <div class="abxy-btn btn-b" data-btn="B">B</div>
-    </div>
+<div id="right-panel">
+<div id="touchpad">
+    <div id="touchpad-hint">单指=鼠标 · 点击=左键 · 长按=右键 · 双指=滚轮</div>
 </div>
 
-<div id="touchpad">
-    <div id="touchpad-hint">单指滑动 = 移动鼠标<br>单击 = 左键 | 长按 = 右键<br>双指滑动 = 滚轮</div>
+<div id="quick-keys">
+    <span class="qk-btn mod" data-mod="ctrl">Ctrl</span>
+    <span class="qk-btn mod" data-mod="alt">Alt</span>
+    <span class="qk-btn mod" data-mod="shift">Shift</span>
+    <span class="qk-btn mod" data-mod="win">Win</span>
+    <span class="qk-btn" data-key="escape">Esc</span>
+    <span class="qk-btn" data-key="tab">Tab</span>
+    <span class="qk-btn" data-key="enter">Ent</span>
+    <span class="qk-btn" data-key="backspace">BS</span>
+    <span class="qk-btn" data-key="delete">Del</span>
+    <span class="qk-btn" data-key="up">↑</span>
+    <span class="qk-btn" data-key="down">↓</span>
+    <span class="qk-btn" data-key="left">←</span>
+    <span class="qk-btn" data-key="right">→</span>
+    <span class="qk-btn" data-key="space">Spc</span>
+    <span class="qk-btn" data-hotkey="ctrl+a">全选</span>
+    <span class="qk-btn" data-hotkey="ctrl+c">复制</span>
+    <span class="qk-btn" data-hotkey="ctrl+v">粘贴</span>
+    <span class="qk-btn" data-hotkey="ctrl+z">撤销</span>
+    <span class="qk-btn" data-hotkey="alt+tab">切窗</span>
+    <span class="qk-btn" data-hotkey="alt+f4">关窗</span>
+    <!-- 自定义快捷键会动态追加在这里 -->
 </div>
 
 <div id="toolbar">
-    <span class="tool-btn" id="btn-mode">手柄</span>
-    <span class="tool-btn" id="btn-left">左键</span>
-    <span class="tool-btn" id="btn-middle">中键</span>
-    <span class="tool-btn" id="btn-right">右键</span>
-    <span class="tool-btn" id="btn-keyboard">键盘</span>
-    <span class="tool-btn" id="btn-settings">设置</span>
-    <span class="tool-btn danger" id="btn-shutdown">关闭</span>
+    <span class="tool-btn" id="btn-left"><span class="tool-btn-icon">&#128070;</span>左</span>
+    <span class="tool-btn" id="btn-right"><span class="tool-btn-icon">&#128071;</span>右</span>
+    <span class="tool-btn" id="btn-mid"><span class="tool-btn-icon">&#128400;</span>中</span>
+    <span class="tool-btn" id="btn-keyboard"><span class="tool-btn-icon">&#9000;</span>键盘</span>
+    <span class="tool-btn" id="btn-keys"><span class="tool-btn-icon">&#127929;</span>快捷</span>
+    <span class="tool-btn" id="btn-files"><span class="tool-btn-icon">&#128193;</span>文件</span>
+    <span class="tool-btn" id="btn-clipboard"><span class="tool-btn-icon">&#128203;</span>剪贴</span>
+    <span class="tool-btn" id="btn-settings"><span class="tool-btn-icon">&#9881;</span>设置</span>
 </div>
+</div><!-- right-panel -->
 
-</div>
+</div><!-- app-container -->
 
-<!-- Keyboard input wrapper -->
+<!-- 键盘输入 -->
 <div id="kb-wrapper">
-    <button id="kb-close-btn">收起键盘</button>
+    <button id="kb-close-btn">收起</button>
     <textarea id="kb-textarea" rows="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="输入文字（支持中文）..."></textarea>
 </div>
 
-<!-- Settings overlay -->
-<div id="settings-overlay">
-    <div class="settings-title">设置</div>
+<!-- 设置面板 -->
+<div id="settings-panel" class="panel-overlay">
+    <div class="panel-header"><span class="panel-title">设置</span><button class="panel-close" data-close="settings-panel">&#10005;</button></div>
+    <div class="settings-group">
+        <h3>画质与帧率</h3>
+        <div class="setting-row"><label>画质</label><input type="range" id="set-quality" min="10" max="90" step="5" value="50"><span class="setting-value" id="val-quality">50</span></div>
+        <div class="setting-row"><label>帧率</label><input type="range" id="set-fps" min="5" max="60" step="5" value="30"><span class="setting-value" id="val-fps">30</span></div>
+        <div class="setting-row"><label>缩放</label><input type="range" id="set-scale" min="0.3" max="1.0" step="0.1" value="0.6"><span class="setting-value" id="val-scale">0.6</span></div>
+    </div>
     <div class="settings-group">
         <h3>鼠标速度</h3>
-        <div class="setting-row">
-            <label>灵敏度</label>
-            <input type="range" id="set-mouse-speed" min="0.5" max="5" step="0.1" value="1.8">
-        </div>
-        <div class="speed-indicator" id="speed-val">1.8x</div>
+        <div class="setting-row"><label>灵敏度</label><input type="range" id="set-mouse-speed" min="0.5" max="5" step="0.1" value="1.8"><span class="setting-value" id="val-speed">1.8x</span></div>
     </div>
     <div class="settings-group">
-        <h3>方向键映射</h3>
-        <div class="setting-row"><label>上</label><input type="text" data-map="up" value="up" maxlength="20"></div>
-        <div class="setting-row"><label>下</label><input type="text" data-map="down" value="down" maxlength="20"></div>
-        <div class="setting-row"><label>左</label><input type="text" data-map="left" value="left" maxlength="20"></div>
-        <div class="setting-row"><label>右</label><input type="text" data-map="right" value="right" maxlength="20"></div>
+        <h3>显示器选择</h3>
+        <div id="monitor-grid" class="monitor-grid"></div>
     </div>
     <div class="settings-group">
-        <h3>ABXY 按键映射</h3>
-        <div class="setting-row"><label>A</label><input type="text" data-map="A" value="j" maxlength="20"></div>
-        <div class="setting-row"><label>B</label><input type="text" data-map="B" value="k" maxlength="20"></div>
-        <div class="setting-row"><label>X</label><input type="text" data-map="X" value="l" maxlength="20"></div>
-        <div class="setting-row"><label>Y</label><input type="text" data-map="Y" value=";" maxlength="20"></div>
+        <h3>自定义快捷键</h3>
+        <p style="font-size:11px;color:#8b949e;margin-bottom:8px">格式: 名称 | 按键组合(用+连接)，如 "保存|ctrl+s"</p>
+        <ul class="shortcut-list" id="shortcut-list"></ul>
+        <button class="shortcut-add" id="shortcut-add">+ 添加快捷键</button>
     </div>
     <div class="settings-group">
-        <h3>肩键映射</h3>
-        <div class="setting-row"><label>L (左肩)</label><input type="text" data-map="L" value="space" maxlength="20"></div>
-        <div class="setting-row"><label>R (右肩)</label><input type="text" data-map="R" value="shift" maxlength="20"></div>
+        <h3>连接管理</h3>
+        <div class="setting-row"><label>关闭远程服务</label><button class="file-download" id="btn-shutdown" style="background:#da3633">关闭</button></div>
     </div>
-    <button class="settings-close-btn" id="settings-close">保存并关闭</button>
+</div>
+
+<!-- 文件管理面板 -->
+<div id="files-panel" class="panel-overlay">
+    <div class="panel-header"><span class="panel-title">文件管理</span><button class="panel-close" data-close="files-panel">&#10005;</button></div>
+    <div class="file-path-bar"><button class="path-btn" id="file-go-root">&#127968; 根</button><span id="file-current-path" style="color:#c9d1d9"></span></div>
+    <div style="margin-bottom:10px"><label class="file-download" style="display:inline-block;cursor:pointer;background:#1f6feb">&#128228; 上传<input type="file" id="file-upload-input" style="display:none" multiple></label></div>
+    <ul class="file-list" id="file-list"></ul>
+</div>
+
+<!-- 剪贴板面板 -->
+<div id="clipboard-panel" class="panel-overlay">
+    <div class="panel-header"><span class="panel-title">剪贴板同步</span><button class="panel-close" data-close="clipboard-panel">&#10005;</button></div>
+    <div class="settings-group"><h3>电脑剪贴板</h3><div class="clipboard-content"><textarea class="clipboard-textarea" id="clipboard-pc-text" readonly placeholder="（空）"></textarea></div></div>
+    <div class="settings-group"><h3>发送到电脑</h3><div class="clipboard-content"><textarea class="clipboard-textarea" id="clipboard-phone-text" placeholder="输入文字..."></textarea></div></div>
+    <div class="clipboard-actions"><button class="clip-btn sync-from-pc" id="clip-refresh">刷新</button><button class="clip-btn sync-to-pc" id="clip-send">发送到电脑</button></div>
 </div>
 
 <script>
 (function() {
-    'use strict';
+'use strict';
 
-    const screenArea = document.getElementById('screen-area');
-    const screenContainer = document.getElementById('screen-container');
-    const screenImg = document.getElementById('screen-img');
-    const touchpad = document.getElementById('touchpad');
-    const gamepadArea = document.getElementById('gamepad-area');
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-    const fpsText = document.getElementById('fps-text');
-    const modeIndicator = document.getElementById('mode-indicator');
-    const settingsOverlay = document.getElementById('settings-overlay');
-    const kbWrapper = document.getElementById('kb-wrapper');
-    const kbTextarea = document.getElementById('kb-textarea');
+// ==================== 全局状态 ====================
+let ws = null;
+let authToken = localStorage.getItem('myconnect_token') || '';
+let frameCount = 0, fpsTimer = Date.now();
+let mouseSpeed = parseFloat(localStorage.getItem('myconnect_speed') || '1.8');
+let modKeys = { ctrl: false, alt: false, shift: false, win: false };
+let customShortcuts = JSON.parse(localStorage.getItem('myconnect_shortcuts') || '[]');
 
-    let ws = null;
-    let frameCount = 0;
-    let fpsTimer = Date.now();
-    let isGamepadMode = false;
+const $ = id => document.getElementById(id);
+const authPage = $('auth-page');
+const appContainer = $('app-container');
+const screenArea = $('screen-area');
+const screenContainer = $('screen-container');
+const screenImg = $('screen-img');
+const touchpad = $('touchpad');
+const statusDot = $('status-dot');
+const statusText = $('status-text');
+const kbWrapper = $('kb-wrapper');
+const kbTextarea = $('kb-textarea');
 
-    // --- Key mappings ---
-    let keyMap = {
-        up: 'up', down: 'down', left: 'left', right: 'right',
-        A: 'j', B: 'k', X: 'l', Y: ';',
-        L: 'space', R: 'shift'
-    };
-
-    let mouseSpeed = 1.8;
-
-    // --- Settings persistence ---
-    function loadSettings() {
+// ==================== 认证 ====================
+async function checkAuth() {
+    const hashParams = new URLSearchParams(location.hash.slice(1));
+    if (hashParams.get('token')) {
+        authToken = hashParams.get('token');
+        localStorage.setItem('myconnect_token', authToken);
+        history.replaceState(null, '', location.pathname);
+    }
+    if (authToken) {
         try {
-            const saved = localStorage.getItem('myconnect_keymap');
-            if (saved) Object.assign(keyMap, JSON.parse(saved));
-            const speed = localStorage.getItem('myconnect_mouse_speed');
-            if (speed) mouseSpeed = parseFloat(speed);
+            const res = await fetch('/api/clipboard/get', { headers: { 'X-Auth-Token': authToken } });
+            if (res.ok) { enterApp(); return; }
         } catch(e) {}
+        authToken = '';
+        localStorage.removeItem('myconnect_token');
     }
+    showAuthPage();
+}
 
-    function saveSettings() {
-        localStorage.setItem('myconnect_keymap', JSON.stringify(keyMap));
-        localStorage.setItem('myconnect_mouse_speed', String(mouseSpeed));
+async function showAuthPage() {
+    authPage.classList.remove('hidden');
+    appContainer.classList.remove('visible');
+    try {
+        const res = await fetch('/api/auth/info');
+        const data = await res.json();
+        $('auth-mode-label').textContent = data.mode === 'fixed' ? '固定密码' : '动态验证码';
+        $('auth-input').inputMode = data.mode === 'dynamic' ? 'numeric' : 'text';
+    } catch(e) {}
+}
+
+$('auth-btn').addEventListener('click', doAuth);
+$('auth-input').addEventListener('keydown', e => { if(e.key === 'Enter') doAuth(); });
+
+async function doAuth() {
+    const pwd = $('auth-input').value.trim();
+    if (!pwd) return;
+    $('auth-error').textContent = '';
+    try {
+        const res = await fetch('/api/auth/verify', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pwd}) });
+        const data = await res.json();
+        if (data.success) {
+            authToken = data.token;
+            localStorage.setItem('myconnect_token', authToken);
+            enterApp();
+        } else {
+            $('auth-error').textContent = data.message || '验证失败';
+            $('auth-input').classList.add('error');
+            setTimeout(() => $('auth-input').classList.remove('error'), 300);
+        }
+    } catch(e) { $('auth-error').textContent = '连接失败'; }
+}
+
+function enterApp() {
+    authPage.classList.add('hidden');
+    appContainer.classList.add('visible');
+    connectWS();
+    handleOrientationChange();
+    renderCustomShortcuts();
+}
+
+// ==================== WebSocket ====================
+let pingInterval = null;
+let reconnectDelay = 1000;
+const RECONNECT_MAX = 15000;
+
+function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}/ws/control`);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = () => { ws.send(JSON.stringify({token: authToken})); reconnectDelay = 1000; };
+    ws.onclose = () => {
+        statusDot.classList.remove('on');
+        statusText.textContent = '重连中...';
+        clearInterval(pingInterval);
+        setTimeout(() => {
+            if (authToken) connectWS();
+        }, reconnectDelay);
+        reconnectDelay = Math.min(RECONNECT_MAX, reconnectDelay * 1.5);
+    };
+    ws.onerror = () => ws.close();
+
+    ws.onmessage = (e) => {
+        if (e.data instanceof ArrayBuffer) {
+            const blob = new Blob([e.data], {type: 'image/jpeg'});
+            const url = URL.createObjectURL(blob);
+            const oldUrl = screenImg.src;
+            screenImg.onload = () => {
+                if (oldUrl && oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
+                if (!screenImg._fitted) { fitImage(); screenImg._fitted = true; }
+            };
+            screenImg.src = url;
+            frameCount++;
+            const now = Date.now();
+            if (now - fpsTimer >= 1000) { $('stat-fps').textContent = frameCount; frameCount = 0; fpsTimer = now; }
+        } else {
+            try { handleServerMessage(JSON.parse(e.data)); } catch(ex) {}
+        }
+    };
+}
+
+function handleServerMessage(msg) {
+    switch(msg.type) {
+        case 'auth_ok':
+            statusDot.classList.add('on'); statusText.textContent = '已连接';
+            pingInterval = setInterval(() => send({type:'ping',ts:Date.now()}), 3000);
+            break;
+        case 'auth_failed':
+            authToken = ''; localStorage.removeItem('myconnect_token');
+            showAuthPage(); $('auth-error').textContent = msg.message || '认证失败';
+            break;
+        case 'pong':
+            $('stat-latency').textContent = Date.now() - msg.ts;
+            break;
+        case 'stats':
+            const bw = msg.bandwidth || 0;
+            $('stat-bandwidth').textContent = bw > 1048576 ? (bw/1048576).toFixed(1)+'MB/s' : bw > 1024 ? (bw/1024).toFixed(0)+'KB/s' : bw+'B/s';
+            break;
+        case 'clipboard_update':
+            $('clipboard-pc-text').value = msg.text || '';
+            break;
     }
+}
 
-    function applySettingsToUI() {
-        document.querySelectorAll('[data-map]').forEach(input => {
-            const key = input.getAttribute('data-map');
-            if (keyMap[key] !== undefined) input.value = keyMap[key];
-        });
-        document.getElementById('set-mouse-speed').value = mouseSpeed;
-        document.getElementById('speed-val').textContent = mouseSpeed.toFixed(1) + 'x';
+function send(obj) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
+
+// ==================== 画面缩放 + 高清请求 ====================
+let imgScale = 1, imgX = 0, imgY = 0;
+let screenPinchDist = 0, screenPinchStartScale = 1;
+let screenPanStartX = 0, screenPanStartY = 0, screenStartImgX = 0, screenStartImgY = 0;
+let hdRequested = false;
+
+function fitImage() {
+    imgScale = 1; imgX = 0; imgY = 0;
+    screenContainer.style.transform = '';
+    screenImg.style.maxWidth = screenArea.clientWidth + 'px';
+    screenImg.style.maxHeight = screenArea.clientHeight + 'px';
+    // 取消高清请求
+    if (hdRequested) { hdRequested = false; send({type:'request_hd', enabled:false}); }
+}
+
+function applyImgTransform() {
+    screenContainer.style.transform = `translate(${imgX}px,${imgY}px) scale(${imgScale})`;
+}
+
+function pinchDist(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+}
+
+screenArea.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (e.touches.length === 2) { screenPinchDist = pinchDist(e.touches); screenPinchStartScale = imgScale; }
+    else if (e.touches.length === 1) { screenPanStartX = e.touches[0].clientX; screenPanStartY = e.touches[0].clientY; screenStartImgX = imgX; screenStartImgY = imgY; }
+}, {passive: false});
+
+screenArea.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 2) {
+        const dist = pinchDist(e.touches);
+        imgScale = Math.min(8, Math.max(0.5, screenPinchStartScale * (dist / screenPinchDist)));
+        applyImgTransform();
+    } else if (e.touches.length === 1 && imgScale > 1) {
+        imgX = screenStartImgX + (e.touches[0].clientX - screenPanStartX);
+        imgY = screenStartImgY + (e.touches[0].clientY - screenPanStartY);
+        applyImgTransform();
     }
+}, {passive: false});
 
-    function readSettingsFromUI() {
-        document.querySelectorAll('[data-map]').forEach(input => {
-            const key = input.getAttribute('data-map');
-            const val = input.value.trim();
-            if (val) keyMap[key] = val;
-        });
-        mouseSpeed = parseFloat(document.getElementById('set-mouse-speed').value) || 1.8;
-    }
-
-    loadSettings();
-
-    // --- Image zoom/pan state ---
-    let imgScale = 1;
-    let imgX = 0, imgY = 0;
-    let naturalW = 0, naturalH = 0;
-
-    // --- WebSocket ---
-    function connect() {
-        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        ws = new WebSocket(`${proto}://${location.host}/ws/control`);
-        ws.binaryType = 'arraybuffer';
-
-        ws.onopen = () => {
-            statusDot.classList.add('on');
-            statusText.textContent = '已连接';
-        };
-
-        ws.onclose = () => {
-            statusDot.classList.remove('on');
-            statusText.textContent = '已断开';
-            setTimeout(connect, 2000);
-        };
-
-        ws.onerror = () => ws.close();
-
-        ws.onmessage = (e) => {
-            if (e.data instanceof ArrayBuffer) {
-                const blob = new Blob([e.data], {type: 'image/jpeg'});
-                const url = URL.createObjectURL(blob);
-                const oldUrl = screenImg.src;
-                screenImg.onload = () => {
-                    if (oldUrl && oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
-                    if (naturalW === 0) fitImage();
-                    naturalW = screenImg.naturalWidth;
-                    naturalH = screenImg.naturalHeight;
-                };
-                screenImg.src = url;
-
-                frameCount++;
-                const now = Date.now();
-                if (now - fpsTimer >= 1000) {
-                    fpsText.textContent = frameCount + ' FPS';
-                    frameCount = 0;
-                    fpsTimer = now;
-                }
-            }
-        };
-    }
-
-    function send(obj) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(obj));
+screenArea.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (e.touches.length === 0) {
+        if (imgScale <= 1) { fitImage(); }
+        else if (imgScale > 1.5 && !hdRequested) {
+            // 放大超过1.5倍时请求高清帧
+            hdRequested = true;
+            send({type:'request_hd', enabled:true});
         }
     }
+}, {passive: false});
 
-    // --- Image fit ---
-    function fitImage() {
-        imgScale = 1;
-        imgX = 0;
-        imgY = 0;
-        screenContainer.style.transform = '';
-        screenImg.style.maxWidth = screenArea.clientWidth + 'px';
-        screenImg.style.maxHeight = screenArea.clientHeight + 'px';
-    }
+let lastTapTime = 0;
+screenArea.addEventListener('click', () => { const now = Date.now(); if (now - lastTapTime < 300) fitImage(); lastTapTime = now; });
 
-    function applyImgTransform() {
-        screenContainer.style.transform = `translate(${imgX}px, ${imgY}px) scale(${imgScale})`;
-    }
+// ==================== 触控板 ====================
+const activeTouches = new Map();
+let tapStartTime = 0, hasMoved = false, isLongPress = false;
+let longPressTimer = null, lastMoveTime = 0;
+let scrollPendingV = 0, scrollPendingH = 0, scrollRAF = null;
 
-    // --- Screen area: pinch zoom + pan ---
-    let screenPinchDist = 0;
-    let screenPanStartX = 0, screenPanStartY = 0;
-    let screenStartImgX = 0, screenStartImgY = 0;
-    let screenPinchStartScale = 1;
+function flushScroll() {
+    scrollRAF = null;
+    if (Math.abs(scrollPendingV) >= 1) { send({type:'scroll',delta:Math.round(scrollPendingV)}); scrollPendingV = 0; }
+    if (Math.abs(scrollPendingH) >= 1) { send({type:'hscroll',delta:Math.round(scrollPendingH)}); scrollPendingH = 0; }
+}
 
-    screenArea.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        if (e.touches.length === 2) {
-            screenPinchDist = pinchDist(e.touches);
-            screenPinchStartScale = imgScale;
-        } else if (e.touches.length === 1) {
-            screenPanStartX = e.touches[0].clientX;
-            screenPanStartY = e.touches[0].clientY;
-            screenStartImgX = imgX;
-            screenStartImgY = imgY;
-        }
-    }, {passive: false});
+touchpad.addEventListener('touchstart', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) activeTouches.set(t.identifier, {x:t.clientX, y:t.clientY, time:Date.now()});
+    if (activeTouches.size === 1) {
+        tapStartTime = Date.now(); hasMoved = false; isLongPress = false;
+        longPressTimer = setTimeout(() => { if (!hasMoved && activeTouches.size === 1) { isLongPress = true; send({type:'click',button:'right'}); if(navigator.vibrate) navigator.vibrate(50); } }, 500);
+    } else clearTimeout(longPressTimer);
+}, {passive: false});
 
-    screenArea.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        if (e.touches.length === 2) {
-            const dist = pinchDist(e.touches);
-            imgScale = Math.min(8, Math.max(0.5, screenPinchStartScale * (dist / screenPinchDist)));
-            applyImgTransform();
-        } else if (e.touches.length === 1 && imgScale > 1) {
-            const dx = e.touches[0].clientX - screenPanStartX;
-            const dy = e.touches[0].clientY - screenPanStartY;
-            imgX = screenStartImgX + dx;
-            imgY = screenStartImgY + dy;
-            applyImgTransform();
-        }
-    }, {passive: false});
+touchpad.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const now = Date.now();
+    for (const t of e.changedTouches) { const p = activeTouches.get(t.identifier); if(p) { p.prevX=p.x; p.prevY=p.y; p.prevTime=p.time; p.x=t.clientX; p.y=t.clientY; p.time=now; } }
 
-    screenArea.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        if (e.touches.length === 0 && imgScale <= 1) fitImage();
-    }, {passive: false});
-
-    let lastTapTime = 0;
-    screenArea.addEventListener('click', () => {
-        const now = Date.now();
-        if (now - lastTapTime < 300) fitImage();
-        lastTapTime = now;
-    });
-
-    function pinchDist(touches) {
-        const dx = touches[0].clientX - touches[1].clientX;
-        const dy = touches[0].clientY - touches[1].clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    // --- Touchpad logic (identifier-based tracking) ---
-    const activeTouches = new Map();
-    let tapStartTime = 0, hasMoved = false;
-    let longPressTimer = null;
-    let isLongPress = false;
-    let lastMoveTime = 0;
-    let scrollPendingV = 0, scrollPendingH = 0;
-    let scrollRAF = null;
-
-    function flushScroll() {
-        scrollRAF = null;
-        if (Math.abs(scrollPendingV) >= 1) {
-            send({type: 'scroll', delta: Math.round(scrollPendingV)});
-            scrollPendingV = 0;
-        }
-        if (Math.abs(scrollPendingH) >= 1) {
-            send({type: 'hscroll', delta: Math.round(scrollPendingH)});
-            scrollPendingH = 0;
-        }
-    }
-
-    function scheduleScrollFlush() {
-        if (!scrollRAF) scrollRAF = requestAnimationFrame(flushScroll);
-    }
-
-    function getTouchCount() { return activeTouches.size; }
-
-    touchpad.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        for (const t of e.changedTouches) {
-            activeTouches.set(t.identifier, {x: t.clientX, y: t.clientY, time: Date.now()});
-        }
-
-        if (getTouchCount() === 1) {
-            const t = e.changedTouches[0];
-            tapStartTime = Date.now();
-            hasMoved = false;
-            isLongPress = false;
-            longPressTimer = setTimeout(() => {
-                if (!hasMoved && getTouchCount() === 1) {
-                    isLongPress = true;
-                    send({type: 'click', button: 'right'});
-                    if (navigator.vibrate) navigator.vibrate(50);
-                }
-            }, 500);
-        } else if (getTouchCount() >= 2) {
-            clearTimeout(longPressTimer);
-        }
-    }, {passive: false});
-
-    touchpad.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const now = Date.now();
-
-        for (const t of e.changedTouches) {
-            const prev = activeTouches.get(t.identifier);
-            if (prev) {
-                prev.prevX = prev.x;
-                prev.prevY = prev.y;
-                prev.prevTime = prev.time;
-                prev.x = t.clientX;
-                prev.y = t.clientY;
-                prev.time = now;
-            }
-        }
-
-        if (getTouchCount() >= 2) {
-            clearTimeout(longPressTimer);
-            const entries = [...activeTouches.values()];
-            let sumDx = 0, sumDy = 0, count = 0;
-            for (const entry of entries) {
-                if (entry.prevX !== undefined) {
-                    sumDx += entry.x - entry.prevX;
-                    sumDy += entry.y - entry.prevY;
-                    count++;
-                }
-            }
-            if (count > 0) {
-                const avgDx = sumDx / count;
-                const avgDy = sumDy / count;
-                const dt = Math.max(1, now - (entries[0].prevTime || now));
-                const speed = Math.sqrt(avgDx*avgDx + avgDy*avgDy) / dt;
-                const speedFactor = Math.max(1, speed * 2.5);
-
-                scrollPendingV += -(avgDy / 12) * speedFactor;
-                scrollPendingH += (avgDx / 12) * speedFactor;
-                scheduleScrollFlush();
-            }
-            return;
-        }
-
-        if (getTouchCount() === 1) {
-            const entry = [...activeTouches.values()][0];
-            if (entry && entry.prevX !== undefined) {
-                const dx = entry.x - entry.prevX;
-                const dy = entry.y - entry.prevY;
-                if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-                    hasMoved = true;
-                    clearTimeout(longPressTimer);
-                    if (now - lastMoveTime > 12) {
-                        send({type: 'move', dx: Math.round(dx * mouseSpeed), dy: Math.round(dy * mouseSpeed)});
-                        lastMoveTime = now;
-                    }
-                }
-            }
-        }
-    }, {passive: false});
-
-    touchpad.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        for (const t of e.changedTouches) {
-            activeTouches.delete(t.identifier);
-        }
+    if (activeTouches.size >= 2) {
         clearTimeout(longPressTimer);
-
-        if (getTouchCount() === 0) {
-            if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
-            if (scrollPendingV || scrollPendingH) flushScroll();
-
-            if (!hasMoved && !isLongPress && activeTouches.size === 0) {
-                const elapsed = Date.now() - tapStartTime;
-                if (elapsed < 250) {
-                    send({type: 'click', button: 'left'});
-                }
+        const entries = [...activeTouches.values()];
+        let sx=0, sy=0, c=0;
+        for (const en of entries) { if(en.prevX!==undefined) { sx+=en.x-en.prevX; sy+=en.y-en.prevY; c++; } }
+        if (c > 0) {
+            const ax=sx/c, ay=sy/c;
+            const dt = Math.max(1, now - (entries[0].prevTime||now));
+            const spd = Math.sqrt(ax*ax+ay*ay)/dt;
+            const f = Math.max(1, spd*2.5);
+            scrollPendingV += -(ay/12)*f; scrollPendingH += (ax/12)*f;
+            if(!scrollRAF) scrollRAF = requestAnimationFrame(flushScroll);
+        }
+        return;
+    }
+    if (activeTouches.size === 1) {
+        const en = [...activeTouches.values()][0];
+        if (en && en.prevX !== undefined) {
+            const dx=en.x-en.prevX, dy=en.y-en.prevY;
+            if (Math.abs(dx)>1||Math.abs(dy)>1) {
+                hasMoved=true; clearTimeout(longPressTimer);
+                if (now-lastMoveTime>10) { send({type:'move',dx:Math.round(dx*mouseSpeed),dy:Math.round(dy*mouseSpeed)}); lastMoveTime=now; }
             }
-            isLongPress = false;
         }
-    }, {passive: false});
+    }
+}, {passive: false});
 
-    touchpad.addEventListener('touchcancel', (e) => {
-        for (const t of e.changedTouches) {
-            activeTouches.delete(t.identifier);
-        }
-        clearTimeout(longPressTimer);
+touchpad.addEventListener('touchend', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) activeTouches.delete(t.identifier);
+    clearTimeout(longPressTimer);
+    if (activeTouches.size === 0) {
+        if(scrollRAF){cancelAnimationFrame(scrollRAF);scrollRAF=null;}
+        if(scrollPendingV||scrollPendingH) flushScroll();
+        if(!hasMoved && !isLongPress && Date.now()-tapStartTime<250) send({type:'click',button:'left'});
         isLongPress = false;
-        if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
-        scrollPendingV = 0; scrollPendingH = 0;
-    });
-
-    // --- Gamepad buttons (multi-touch safe) ---
-    function setupGamepadButtons() {
-        const allBtns = gamepadArea.querySelectorAll('[data-btn]');
-        const activeMap = new Map();
-
-        function getButtonForTouch(touch) {
-            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (!el) return null;
-            return el.closest('[data-btn]');
-        }
-
-        gamepadArea.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            for (const touch of e.changedTouches) {
-                const btn = getButtonForTouch(touch);
-                if (btn) {
-                    const btnName = btn.getAttribute('data-btn');
-                    activeMap.set(touch.identifier, {btn, btnName});
-                    btn.classList.add('pressed');
-                    const key = keyMap[btnName];
-                    if (key) send({type: 'keydown', key: key});
-                }
-            }
-        }, {passive: false});
-
-        gamepadArea.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            for (const touch of e.changedTouches) {
-                const entry = activeMap.get(touch.identifier);
-                if (entry) {
-                    entry.btn.classList.remove('pressed');
-                    const key = keyMap[entry.btnName];
-                    if (key) send({type: 'keyup', key: key});
-                    activeMap.delete(touch.identifier);
-                }
-            }
-        }, {passive: false});
-
-        gamepadArea.addEventListener('touchcancel', (e) => {
-            e.preventDefault();
-            for (const touch of e.changedTouches) {
-                const entry = activeMap.get(touch.identifier);
-                if (entry) {
-                    entry.btn.classList.remove('pressed');
-                    const key = keyMap[entry.btnName];
-                    if (key) send({type: 'keyup', key: key});
-                    activeMap.delete(touch.identifier);
-                }
-            }
-        }, {passive: false});
-
-        gamepadArea.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-        }, {passive: false});
     }
-    setupGamepadButtons();
+}, {passive: false});
 
-    // --- Mode switching ---
-    const btnMode = document.getElementById('btn-mode');
+touchpad.addEventListener('touchcancel', e => {
+    for (const t of e.changedTouches) activeTouches.delete(t.identifier);
+    clearTimeout(longPressTimer); isLongPress=false;
+    if(scrollRAF){cancelAnimationFrame(scrollRAF);scrollRAF=null;} scrollPendingV=0;scrollPendingH=0;
+});
 
-    function setGamepadMode(active) {
-        isGamepadMode = active;
-        if (active) {
-            screenArea.classList.add('gamepad-mode');
-            touchpad.classList.add('gamepad-mode');
-            gamepadArea.classList.add('visible');
-            btnMode.classList.add('active');
-            btnMode.textContent = '触控';
-            modeIndicator.textContent = '手柄模式';
-        } else {
-            screenArea.classList.remove('gamepad-mode');
-            touchpad.classList.remove('gamepad-mode');
-            gamepadArea.classList.remove('visible');
-            btnMode.classList.remove('active');
-            btnMode.textContent = '手柄';
-            modeIndicator.textContent = '触控板模式';
-        }
-        setTimeout(fitImage, 350);
-    }
+// ==================== 横屏适配 ====================
+function isLandscape() {
+    return window.innerWidth > window.innerHeight;
+}
 
-    btnMode.addEventListener('click', (e) => {
+function handleOrientationChange() {
+    setTimeout(() => {
+        screenImg._fitted = false;
+        fitImage();
+    }, 200);
+}
+
+// 监听方向变化
+window.addEventListener('orientationchange', handleOrientationChange);
+screen.orientation && screen.orientation.addEventListener('change', handleOrientationChange);
+window.addEventListener('resize', () => {
+    if (imgScale <= 1) { screenImg._fitted = false; fitImage(); }
+});
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => { if(imgScale<=1) fitImage(); });
+}
+
+// ==================== 工具栏 ====================
+$('btn-left').addEventListener('click', e => { e.stopPropagation(); send({type:'click',button:'left'}); });
+$('btn-right').addEventListener('click', e => { e.stopPropagation(); send({type:'click',button:'right'}); });
+$('btn-mid').addEventListener('click', e => { e.stopPropagation(); send({type:'click',button:'middle'}); });
+
+$('btn-keyboard').addEventListener('click', e => {
+    e.stopPropagation();
+    kbWrapper.classList.contains('visible') ? hideKeyboard() : showKeyboard();
+});
+function showKeyboard() { kbWrapper.classList.add('visible'); kbTextarea.value=''; setTimeout(()=>kbTextarea.focus(),100); }
+function hideKeyboard() { kbWrapper.classList.remove('visible'); kbTextarea.blur(); }
+$('kb-close-btn').addEventListener('click', e => { e.stopPropagation(); hideKeyboard(); });
+
+$('btn-keys').addEventListener('click', e => { e.stopPropagation(); $('quick-keys').classList.toggle('visible'); $('btn-keys').classList.toggle('active'); });
+$('btn-files').addEventListener('click', e => { e.stopPropagation(); showPanel('files-panel'); loadFiles(); });
+$('btn-clipboard').addEventListener('click', e => { e.stopPropagation(); showPanel('clipboard-panel'); refreshClipboard(); });
+$('btn-settings').addEventListener('click', e => { e.stopPropagation(); showPanel('settings-panel'); loadMonitors(); renderShortcutEditor(); });
+
+function showPanel(id) { $(id).classList.add('visible'); }
+document.querySelectorAll('.panel-close').forEach(btn => { btn.addEventListener('click', () => $(btn.dataset.close).classList.remove('visible')); });
+
+// 虚拟快捷键
+document.querySelectorAll('#quick-keys .qk-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
         e.stopPropagation();
-        setGamepadMode(!isGamepadMode);
-    });
-
-    // --- Toolbar buttons ---
-    document.getElementById('btn-left').addEventListener('click', (e) => {
-        e.stopPropagation();
-        send({type: 'click', button: 'left'});
-    });
-    document.getElementById('btn-middle').addEventListener('click', (e) => {
-        e.stopPropagation();
-        send({type: 'click', button: 'middle'});
-    });
-    document.getElementById('btn-right').addEventListener('click', (e) => {
-        e.stopPropagation();
-        send({type: 'click', button: 'right'});
-    });
-
-    document.getElementById('btn-keyboard').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (kbWrapper.classList.contains('visible')) {
-            hideKeyboard();
-        } else {
-            showKeyboard();
-        }
-    });
-
-    document.getElementById('btn-shutdown').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm('确定要关闭电脑端遥控服务吗？')) {
-            send({type: 'shutdown'});
-            statusText.textContent = '服务已关闭';
-            statusDot.classList.remove('on');
-        }
-    });
-
-    // --- Keyboard input (textarea for IME support) ---
-    function showKeyboard() {
-        kbWrapper.classList.add('visible');
-        kbTextarea.value = '';
-        setTimeout(() => kbTextarea.focus(), 100);
-    }
-
-    function hideKeyboard() {
-        kbWrapper.classList.remove('visible');
-        kbTextarea.blur();
-    }
-
-    document.getElementById('kb-close-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        hideKeyboard();
-    });
-
-    let composing = false;
-    let lastCompositionText = '';
-
-    kbTextarea.addEventListener('compositionstart', () => {
-        composing = true;
-        lastCompositionText = '';
-    });
-
-    kbTextarea.addEventListener('compositionupdate', (e) => {
-        lastCompositionText = e.data || '';
-    });
-
-    kbTextarea.addEventListener('compositionend', (e) => {
-        composing = false;
-        const val = e.data || kbTextarea.value;
-        if (val) {
-            send({type: 'text', text: val});
-        }
-        kbTextarea.value = '';
-        lastCompositionText = '';
-    });
-
-    kbTextarea.addEventListener('input', (e) => {
-        if (composing) return;
-        const val = kbTextarea.value;
-        if (val) {
-            send({type: 'text', text: val});
-            kbTextarea.value = '';
+        const mod = btn.dataset.mod, key = btn.dataset.key, hotkey = btn.dataset.hotkey;
+        if (mod) { modKeys[mod] = !modKeys[mod]; btn.classList.toggle('active', modKeys[mod]); }
+        else if (hotkey) { send({type:'hotkey',keys:hotkey.split('+')}); resetMods(); }
+        else if (key) {
+            const mods = Object.entries(modKeys).filter(([k,v])=>v).map(([k])=>k);
+            if (mods.length) { send({type:'hotkey',keys:[...mods,key]}); resetMods(); }
+            else send({type:'key',key:key});
         }
     });
+});
 
-    kbTextarea.addEventListener('keydown', (e) => {
-        if (composing) return;
-        const specialKeys = {
-            'Enter': 'enter', 'Backspace': 'backspace', 'Escape': 'escape',
-            'Tab': 'tab', 'ArrowUp': 'up', 'ArrowDown': 'down',
-            'ArrowLeft': 'left', 'ArrowRight': 'right', 'Delete': 'delete',
-            ' ': 'space'
-        };
-        if (specialKeys[e.key]) {
-            e.preventDefault();
-            send({type: 'key', key: specialKeys[e.key]});
-        }
+function resetMods() { Object.keys(modKeys).forEach(k=>modKeys[k]=false); document.querySelectorAll('#quick-keys .qk-btn.mod').forEach(b=>b.classList.remove('active')); }
+
+// ==================== 自定义快捷键 ====================
+function renderCustomShortcuts() {
+    // 移除旧的自定义按钮
+    document.querySelectorAll('#quick-keys .qk-btn.custom').forEach(el => el.remove());
+    const container = $('quick-keys');
+    customShortcuts.forEach((sc, i) => {
+        const btn = document.createElement('span');
+        btn.className = 'qk-btn custom';
+        btn.textContent = sc.name;
+        btn.dataset.hotkey = sc.keys;
+        btn.addEventListener('click', e => { e.stopPropagation(); send({type:'hotkey',keys:sc.keys.split('+')}); });
+        container.appendChild(btn);
     });
+}
 
-    // --- Settings ---
-    document.getElementById('btn-settings').addEventListener('click', (e) => {
-        e.stopPropagation();
-        applySettingsToUI();
-        settingsOverlay.classList.add('visible');
+function renderShortcutEditor() {
+    const list = $('shortcut-list');
+    list.innerHTML = '';
+    customShortcuts.forEach((sc, i) => {
+        const li = document.createElement('li');
+        li.className = 'shortcut-item';
+        li.innerHTML = `<input type="text" value="${sc.name}" placeholder="名称" style="width:60px" data-idx="${i}" data-field="name">
+            <input type="text" value="${sc.keys}" placeholder="ctrl+shift+s" data-idx="${i}" data-field="keys">
+            <button class="shortcut-del" data-idx="${i}">删</button>`;
+        list.appendChild(li);
     });
-
-    document.getElementById('set-mouse-speed').addEventListener('input', function() {
-        document.getElementById('speed-val').textContent = parseFloat(this.value).toFixed(1) + 'x';
-    });
-
-    document.getElementById('settings-close').addEventListener('click', () => {
-        readSettingsFromUI();
-        saveSettings();
-        settingsOverlay.classList.remove('visible');
-    });
-
-    // --- Prevent iOS rubber-band scrolling ---
-    document.body.addEventListener('touchmove', (e) => {
-        if (e.target === document.body || e.target === document.documentElement) {
-            e.preventDefault();
-        }
-    }, {passive: false});
-
-    // --- Handle visual viewport changes (virtual keyboard appearing) ---
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => {
-            if (imgScale <= 1) fitImage();
+    // 绑定事件
+    list.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('change', () => {
+            const idx = parseInt(inp.dataset.idx);
+            customShortcuts[idx][inp.dataset.field] = inp.value.trim();
+            saveShortcuts();
         });
-    }
-
-    window.addEventListener('resize', () => {
-        if (imgScale <= 1) fitImage();
     });
+    list.querySelectorAll('.shortcut-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+            customShortcuts.splice(parseInt(btn.dataset.idx), 1);
+            saveShortcuts(); renderShortcutEditor(); renderCustomShortcuts();
+        });
+    });
+}
 
-    // --- Startup ---
-    connect();
-    applySettingsToUI();
+$('shortcut-add').addEventListener('click', () => {
+    customShortcuts.push({name: '新快捷', keys: 'ctrl+s'});
+    saveShortcuts(); renderShortcutEditor(); renderCustomShortcuts();
+});
+
+function saveShortcuts() {
+    localStorage.setItem('myconnect_shortcuts', JSON.stringify(customShortcuts));
+    renderCustomShortcuts();
+}
+
+// ==================== 键盘输入（IME） ====================
+let composing = false;
+kbTextarea.addEventListener('compositionstart', () => { composing = true; });
+kbTextarea.addEventListener('compositionend', e => { composing=false; const v=e.data||kbTextarea.value; if(v) send({type:'text',text:v}); kbTextarea.value=''; });
+kbTextarea.addEventListener('input', () => { if(composing) return; const v=kbTextarea.value; if(v){send({type:'text',text:v}); kbTextarea.value='';} });
+kbTextarea.addEventListener('keydown', e => {
+    if(composing) return;
+    const map = {'Enter':'enter','Backspace':'backspace','Escape':'escape','Tab':'tab','ArrowUp':'up','ArrowDown':'down','ArrowLeft':'left','ArrowRight':'right','Delete':'delete',' ':'space'};
+    if(map[e.key]) { e.preventDefault(); send({type:'key',key:map[e.key]}); }
+});
+
+// ==================== 设置面板 ====================
+$('set-quality').addEventListener('input', function() { $('val-quality').textContent=this.value; send({type:'set_quality',value:+this.value}); });
+$('set-fps').addEventListener('input', function() { $('val-fps').textContent=this.value; send({type:'set_fps',value:+this.value}); });
+$('set-scale').addEventListener('input', function() { $('val-scale').textContent=this.value; send({type:'set_scale',value:+this.value}); });
+$('set-mouse-speed').addEventListener('input', function() { mouseSpeed=+this.value; $('val-speed').textContent=mouseSpeed.toFixed(1)+'x'; localStorage.setItem('myconnect_speed', String(mouseSpeed)); });
+
+$('btn-shutdown').addEventListener('click', e => { e.stopPropagation(); if(confirm('确定关闭远程服务？')){ send({type:'shutdown'}); statusText.textContent='已关闭'; statusDot.classList.remove('on'); } });
+
+async function loadMonitors() {
+    try {
+        const res = await fetch('/api/monitors', {headers:{'X-Auth-Token':authToken}});
+        const data = await res.json();
+        const grid = $('monitor-grid'); grid.innerHTML = '';
+        (data.monitors||[]).forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'monitor-card' + (m.index===data.current?' active':'');
+            card.innerHTML = `<div class="mon-icon">&#128421;</div><div class="mon-name">${m.name}</div><div class="mon-res">${m.width}x${m.height}</div>`;
+            card.addEventListener('click', () => { send({type:'set_monitor',index:m.index}); grid.querySelectorAll('.monitor-card').forEach(c=>c.classList.remove('active')); card.classList.add('active'); });
+            grid.appendChild(card);
+        });
+    } catch(e) {}
+}
+
+// ==================== 文件管理 ====================
+let currentFilePath = null;
+async function loadFiles(path) {
+    const url = path ? `/api/files/list?path=${encodeURIComponent(path)}` : '/api/files/list';
+    try {
+        const res = await fetch(url, {headers:{'X-Auth-Token':authToken}});
+        const data = await res.json();
+        if (data.error) { $('file-list').innerHTML = `<li class="file-item" style="color:#f85149">${data.error}</li>`; return; }
+        currentFilePath = data.path || null;
+        $('file-current-path').textContent = data.path || '共享目录';
+        const list = $('file-list'); list.innerHTML = '';
+        if (data.parent && data.type === 'listing') {
+            const li = document.createElement('li'); li.className='file-item';
+            li.innerHTML = `<span class="file-icon">&#11014;</span><div class="file-info"><div class="file-name">.. 上级</div></div>`;
+            li.addEventListener('click', () => loadFiles(data.parent)); list.appendChild(li);
+        }
+        const items = data.type==='root' ? data.dirs.map(d=>({...d,is_dir:true,size:0})) : (data.items||[]);
+        items.forEach(item => {
+            const li = document.createElement('li'); li.className='file-item';
+            const icon = item.is_dir ? '&#128193;' : '&#128196;';
+            const size = item.is_dir ? '' : formatSize(item.size);
+            li.innerHTML = `<span class="file-icon">${icon}</span><div class="file-info"><div class="file-name">${item.name}</div><div class="file-meta">${size}</div></div>` + (item.is_dir ? '' : `<button class="file-download" data-path="${item.path}">下载</button>`);
+            if (item.is_dir) li.addEventListener('click', () => loadFiles(item.path));
+            const dl = li.querySelector('.file-download');
+            if (dl) dl.addEventListener('click', e => { e.stopPropagation(); const a=document.createElement('a'); a.href=`/api/files/download?path=${encodeURIComponent(item.path)}&token=${encodeURIComponent(authToken)}`; a.download=item.name; a.click(); });
+            list.appendChild(li);
+        });
+    } catch(e) { $('file-list').innerHTML = '<li class="file-item" style="color:#f85149">加载失败</li>'; }
+}
+$('file-go-root').addEventListener('click', () => loadFiles());
+$('file-upload-input').addEventListener('change', async function() {
+    for (const file of this.files) { const fd=new FormData(); fd.append('file',file); await fetch('/api/files/upload',{method:'POST',headers:{'X-Auth-Token':authToken},body:fd}); }
+    this.value=''; if(currentFilePath) loadFiles(currentFilePath);
+});
+function formatSize(b) { if(b<1024) return b+'B'; if(b<1048576) return (b/1024).toFixed(1)+'KB'; if(b<1073741824) return (b/1048576).toFixed(1)+'MB'; return (b/1073741824).toFixed(2)+'GB'; }
+
+// ==================== 剪贴板 ====================
+async function refreshClipboard() { try { const r=await fetch('/api/clipboard/get',{headers:{'X-Auth-Token':authToken}}); $('clipboard-pc-text').value=(await r.json()).text||''; } catch(e){} }
+$('clip-refresh').addEventListener('click', refreshClipboard);
+$('clip-send').addEventListener('click', async () => {
+    const t=$('clipboard-phone-text').value; if(!t) return;
+    await fetch('/api/clipboard/set',{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':authToken},body:JSON.stringify({text:t})});
+    $('clipboard-phone-text').value='';
+});
+
+// ==================== 防iOS橡皮筋 ====================
+document.body.addEventListener('touchmove', e => { if(e.target===document.body||e.target===document.documentElement) e.preventDefault(); }, {passive:false});
+
+// ==================== 启动 ====================
+checkAuth();
 })();
 </script>
 </body>
